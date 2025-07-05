@@ -1,6 +1,13 @@
 import datetime
+import tempfile
+from io import BytesIO
 
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 from django_filters.rest_framework import DjangoFilterBackend
+from openpyxl import Workbook
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
@@ -38,6 +45,45 @@ class CustomerViewSet(viewsets.ModelViewSet):
             "total_paid": total_paid,
             "debt": remaining
         })
+    
+
+    @action(detail=False, methods=['get'])
+    def export_pdf(self, request):
+        buffer = BytesIO()
+        p = canvas.Canvas(buffer, pagesize=A4)
+
+        y = 800
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(100, y, "Λίστα Πελατών")
+        y -= 40
+
+        p.setFont("Helvetica", 10)
+        customers = Customer.objects.all()
+
+        for c in customers:
+            if y < 50:
+                p.showPage()
+                y = 800
+            p.drawString(50, y, f"ID: {c.id} | {c.first_name} {c.last_name}")
+            y -= 15
+            p.drawString(70, y, f"ΑΦΜ: {c.tax_id} | Τηλ: {c.phone} | Email: {c.email or '—'}")
+            y -= 25
+
+        p.save()
+        buffer.seek(0)
+        return HttpResponse(buffer, content_type='application/pdf')
+    
+
+
+
+
+
+
+
+
+
+
+
 
 
 class ItemViewSet(viewsets.ModelViewSet):
@@ -72,6 +118,10 @@ class ItemViewSet(viewsets.ModelViewSet):
             name = item.item.name
             result[name] = result.get(name, 0) + item.quantity
         return Response(result)
+
+
+
+
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -119,6 +169,40 @@ class OrderViewSet(viewsets.ModelViewSet):
         })
 
 
+    @action(detail=False, methods=['get'])
+    def export_pdf(self, request):
+        buffer = BytesIO()
+        p = canvas.Canvas(buffer, pagesize=A4)
+
+        y = 800
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(100, y, "Λίστα Παραγγελιών")
+        y -= 40
+
+        p.setFont("Helvetica", 10)
+        orders = Order.objects.all().select_related("customer")
+
+        for order in orders:
+            if y < 50:
+                p.showPage()
+                y = 800
+            p.drawString(50, y, f"ID: {order.id} | Ημερομηνία: {order.date} | Πελάτης: {order.customer.first_name} {order.customer.last_name}")
+            y -= 15
+            p.drawString(70, y, f"Ποσό: {order.total_amount()} €  |  Πληρωμένο: {order.paid_amount()} €  | Υπόλοιπο: {order.remaining_amount()} €")
+            y -= 25
+
+        p.save()
+        buffer.seek(0)
+ 
+        return HttpResponse(buffer, content_type='application/pdf')
+
+    
+
+
+    
+
+
+
 class OrderItemViewSet(viewsets.ModelViewSet):
     queryset = OrderItem.objects.all()
     filter_backends = [DjangoFilterBackend]
@@ -128,6 +212,10 @@ class OrderItemViewSet(viewsets.ModelViewSet):
         if self.request.method == 'POST':
             return OrderItemCreateSerializer
         return OrderItemSerializer
+
+
+
+
 
 
 class PaymentViewSet(viewsets.ModelViewSet):
@@ -142,6 +230,42 @@ class PaymentViewSet(viewsets.ModelViewSet):
         todays_payments = Payment.objects.filter(date=today)
         serializer = self.get_serializer(todays_payments, many=True)
         return Response(serializer.data)
+    
+
+
+    @action(detail=False, methods=['get'])
+    def export_pdf(self, request):
+        buffer = BytesIO()
+        p = canvas.Canvas(buffer, pagesize=A4)
+
+        y = 800
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(100, y, "Λίστα Πληρωμών")
+        y -= 40
+
+        p.setFont("Helvetica", 10)
+        payments = Payment.objects.all().select_related("order")
+
+        for pay in payments:
+            if y < 50:
+                p.showPage()
+                y = 800
+            p.drawString(50, y, f"ID: {pay.id} | Ημερομηνία: {pay.date}")
+            y -= 15
+            p.drawString(70, y, f"Ποσό: {pay.amount} € | Παραγγελία #{pay.order.id}")
+            y -= 25
+
+        p.save()
+        buffer.seek(0)
+        return HttpResponse(buffer, content_type='application/pdf')
+
+    
+
+
+
+
+
+
     
 
 
@@ -193,10 +317,160 @@ class DashboardViewSet(viewsets.ViewSet):
             "count": payments.count()
         })
 
+    @action(detail=False, methods=['get'])
+    def export_excel(self, request):
+        orders = Order.objects.all().select_related('customer')
+    
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Orders"
 
+        ws.append([
+        "ID", "Ημερομηνία", "Πελάτης", "Συνολικό Ποσό", "Πληρωμένο Ποσό", "Υπόλοιπο", "Εξοφλημένη"
+        ])
 
+        for order in orders:
+            ws.append([
+                order.id,
+                str(order.date),
+                f"{order.customer.first_name} {order.customer.last_name}",
+                float(order.total_amount()),
+                float(order.paid_amount()),
+                float(order.remaining_amount()),
+                "ΝΑΙ" if order.is_paid() else "ΟΧΙ"
+            ])
 
+        response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename=orders.xlsx'
+        wb.save(response)
+        return response
     
 
 
+
+    @action(detail=False, methods=['get'])
+    def export_excel(self, request):
+        payments = Payment.objects.all().select_related('order')
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Payments"
+
+        ws.append(["ID", "Ποσό", "Ημερομηνία", "Παραγγελία"])
+
+        for p in payments:
+            ws.append([
+                p.id,
+                float(p.amount),
+                str(p.date),
+                f"#{p.order.id}"
+        ])
+
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+        response['Content-Disposition'] = 'attachment; filename=payments.xlsx'
+        wb.save(response)
+        return response
+
+    @action(detail=False, methods=['get'])
+    def export_summary(self, request):
+        today = datetime.date.today()
+        orders = Order.objects.filter(date=today)
+        payments = Payment.objects.filter(date=today)
+        customers = Customer.objects.all()
+
+        total_sales = sum(order.total_amount() for order in orders)
+        total_payments = sum(p.amount for p in payments)
+
+        debtors = []
+        for c in customers:
+            total = sum(o.total_amount() for o in c.orders.all())
+            paid = sum(o.paid_amount() for o in c.orders.all())
+            if total - paid > 0:
+                debtors.append((f"{c.first_name} {c.last_name}", total - paid))
+        debtors.sort(key=lambda x: x[1], reverse=True)
+        top_debtors = debtors[:5]
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Σύνοψη"
+
+        ws.append(["Ημερομηνία", str(today)])
+        ws.append(["Σύνολο Πωλήσεων", total_sales])
+        ws.append(["Σύνολο Πληρωμών", total_payments])
+        ws.append([])
+        ws.append(["Top Χρεωμένοι Πελάτες"])
+        ws.append(["Πελάτης", "Χρέος"])
+        for name, debt in top_debtors:
+            ws.append([name, debt])
+
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename=summary.xlsx'
+        wb.save(response)
+        return response
     
+
+
+
+
+
+    @action(detail=False, methods=['get'])
+    def export_summary_pdf(self, request):
+        today = datetime.date.today()
+        orders = Order.objects.filter(date=today)
+        payments = Payment.objects.filter(date=today)
+        customers = Customer.objects.all()
+
+        total_sales = sum(order.total_amount() for order in orders)
+        total_payments = sum(p.amount for p in payments)
+
+        # Υπολογισμός top χρεωμένων
+        debtors = []
+        for c in customers:
+            total = sum(o.total_amount() for o in c.orders.all())
+            paid = sum(o.paid_amount() for o in c.orders.all())
+            debt = total - paid
+            if debt > 0:
+                debtors.append((f"{c.first_name} {c.last_name}", debt))
+                debtors.sort(key=lambda x: x[1], reverse=True)
+                top_debtors = debtors[:5]
+
+            # Δημιουργία PDF
+        buffer = BytesIO()
+        p = canvas.Canvas(buffer, pagesize=A4)
+        y = 800
+
+        p.setFont("Helvetica-Bold", 14)
+        p.drawString(100, y, "Ημερήσια Σύνοψη")
+        y -= 40
+
+        p.setFont("Helvetica", 11)
+        p.drawString(50, y, f"Ημερομηνία: {today}")
+        y -= 20
+        p.drawString(50, y, f"Σύνολο Πωλήσεων: {total_sales} €")
+        y -= 20
+        p.drawString(50, y, f"Σύνολο Πληρωμών: {total_payments} €")
+        y -= 40
+
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(50, y, "Top Χρεωμένοι Πελάτες:")
+        y -= 25
+
+        p.setFont("Helvetica", 10)
+        for name, debt in top_debtors:
+            if y < 50:
+                p.showPage()
+                y = 800
+            p.drawString(70, y, f"{name} - Χρέος: {debt} €")
+            y -= 20
+
+        p.save()
+        buffer.seek(0)
+
+        return HttpResponse(buffer, content_type='application/pdf')
+
