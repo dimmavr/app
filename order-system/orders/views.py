@@ -2,8 +2,9 @@ import datetime
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
+from rest_framework.viewsets import ViewSet
 
 from .models import Customer, Item, Order, OrderItem, Payment
 from .serializers import (CustomerSerializer, ItemSerializer,
@@ -141,3 +142,61 @@ class PaymentViewSet(viewsets.ModelViewSet):
         todays_payments = Payment.objects.filter(date=today)
         serializer = self.get_serializer(todays_payments, many=True)
         return Response(serializer.data)
+    
+
+
+class DashboardViewSet(viewsets.ViewSet):
+
+    def list(self, request):
+        return Response({
+            "daily_sales": request.build_absolute_uri('daily_sales/'),
+            "daily_payments": request.build_absolute_uri('daily_payments/'),
+            "top_debtors": request.build_absolute_uri('top_debtors/')
+        })
+
+   
+
+    @action(detail=False, methods=['get'])
+    def daily_sales(self, request):
+        today = datetime.date.today()
+        orders = Order.objects.filter(date=today)
+        total = sum(order.total_amount() for order in orders)
+        return Response({
+            "date": today,
+            "total_sales": total,
+            "total_orders": orders.count()
+        })
+
+    @action(detail=False, methods=['get'])
+    def top_debtors(self, request):
+        customers = Customer.objects.all()
+        data = []
+        for c in customers:
+            total = sum(o.total_amount() for o in c.orders.all())
+            paid = sum(o.paid_amount() for o in c.orders.all())
+            if total - paid > 0:
+                data.append({
+                    "customer": f"{c.first_name} {c.last_name}",
+                    "debt": total - paid
+                })
+        data.sort(key=lambda x: x["debt"], reverse=True)
+        return Response(data[:5])
+
+    @action(detail=False, methods=['get'])
+    def daily_payments(self, request):
+        today = datetime.date.today()
+        payments = Payment.objects.filter(date=today)
+        total = sum(p.amount for p in payments)
+        return Response({
+            "date": today,
+            "total_payments": total,
+            "count": payments.count()
+        })
+
+
+
+
+    
+
+
+    
