@@ -195,6 +195,39 @@ class OrderViewSet(viewsets.ModelViewSet):
         buffer.seek(0)
  
         return HttpResponse(buffer, content_type='application/pdf')
+    
+
+
+    @action(detail=False, methods=['get'])
+    def by_date(self,request):
+        date_str = request.query_params.get('date')
+        if not date_str:
+            return Response({"error": "Δώσε ημερομηνία με ?date=YYYY-MM-DD"}, status=400)
+        try:
+            date_obj = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return Response({"error": "Λάθος μορφή ημερομηνίας"}, status=400)   
+        orders_today = Order.objects.filter(date=date_obj)
+        serializer= self.get_serializer(orders_today, many=True)
+        return Response(serializer.data)
+    
+
+
+    @action(detail=False, methods=['get'])
+    def by_month(self, request):
+        month = request.query_params.get('month')  # π.χ. ?month=2025-07
+        if not month:
+             return Response({"error": "Δώσε μήνα (YYYY-MM)"}, status=400)
+
+        try:
+            year, month = map(int, month.split('-'))
+        except:
+            return Response({"error": "Λάθος μορφή μήνα"}, status=400)
+
+        orders = Order.objects.filter(date__year=year, date__month=month)
+        serializer = self.get_serializer(orders, many=True)
+        return Response(serializer.data)
+
 
     
 
@@ -473,4 +506,25 @@ class DashboardViewSet(viewsets.ViewSet):
         buffer.seek(0)
 
         return HttpResponse(buffer, content_type='application/pdf')
+    
 
+
+    @action(detail=False, methods=['get'])
+    def overdue_debtors(self, request):
+        days = int(request.query_params.get('days', 30))
+        cutoff = datetime.date.today() - datetime.timedelta(days=days)
+
+        overdue_customers = []
+        for customer in Customer.objects.all():
+            old_orders = customer.orders.filter(date__lte=cutoff)
+            total = sum(o.total_amount() for o in old_orders)
+            paid = sum(o.paid_amount() for o in old_orders)
+            debt = total - paid
+            if debt > 0:
+                overdue_customers.append({
+                  "customer": f"{customer.first_name} {customer.last_name}",
+                  "debt": debt,
+                   "orders_count": old_orders.count()
+               })
+
+        return Response(overdue_customers)
