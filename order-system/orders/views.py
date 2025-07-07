@@ -10,7 +10,7 @@ from openpyxl import Workbook
 from reportlab.pdfgen import canvas
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
@@ -385,7 +385,7 @@ class DashboardViewSet(viewsets.ViewSet):
 
 
     @action(detail=False, methods=['get'])
-    def export_excel(self, request):
+    def export_payments_excel(self, request):
         payments = Payment.objects.all().select_related('order')
 
         wb = Workbook()
@@ -545,3 +545,39 @@ def change_password(request):
     user.set_password(new_password)
     user.save()
     return Response({"success": "Ο κωδικός άλλαξε επιτυχώς"})
+
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_user(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    email = request.data.get('email')
+    first_name = request.data.get('first_name', '')
+    last_name = request.data.get('last_name', '')
+
+    if not username or not password or not email:
+        return Response({"error": "username, password και email είναι υποχρεωτικά"}, status=400)
+
+    if User.objects.filter(username=username).exists():
+        return Response({"error": "Το όνομα χρήστη υπάρχει ήδη"}, status=400)
+
+    if User.objects.filter(email=email).exists():
+        return Response({"error": "Αυτό το email χρησιμοποιείται ήδη"}, status=400)
+
+    user = User.objects.create_user(
+        username=username,
+        password=password,
+        email=email,
+        first_name=first_name,
+        last_name=last_name
+    )
+
+    return Response({
+        "success": f"Ο χρήστης {user.username} δημιουργήθηκε επιτυχώς",
+        "username": user.username,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name
+    }, status=201)

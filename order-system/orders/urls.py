@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (CustomerViewSet, DashboardViewSet, ItemViewSet,
                     OrderItemViewSet, OrderViewSet, PaymentViewSet,
-                    change_password)
+                    change_password, register_user)
 
 router = DefaultRouter()
 router.register(r'customers', CustomerViewSet)
@@ -16,4 +16,5 @@ router.register(r'dashboard', DashboardViewSet, basename='dashboard')  # 🔹 Π
 urlpatterns = [
     path('', include(router.urls)),
     path('change-password/', change_password),
+    path('register/', register_user),
 ]
