@@ -2,7 +2,8 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (CustomerViewSet, DashboardViewSet, ItemViewSet,
-                    OrderItemViewSet, OrderViewSet, PaymentViewSet)
+                    OrderItemViewSet, OrderViewSet, PaymentViewSet,
+                    change_password)
 
 router = DefaultRouter()
 router.register(r'customers', CustomerViewSet)
@@ -14,4 +15,5 @@ router.register(r'dashboard', DashboardViewSet, basename='dashboard')  # 🔹 Π
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('change-password/', change_password),
 ]
