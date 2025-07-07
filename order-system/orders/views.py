@@ -2,14 +2,15 @@ import datetime
 import tempfile
 from io import BytesIO
 
+from django.contrib.auth.models import User
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django_filters.rest_framework import DjangoFilterBackend
 from openpyxl import Workbook
-from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
-from rest_framework import filters, viewsets
-from rest_framework.decorators import action, api_view
+from rest_framework import filters, status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
@@ -524,7 +525,23 @@ class DashboardViewSet(viewsets.ViewSet):
                 overdue_customers.append({
                   "customer": f"{customer.first_name} {customer.last_name}",
                   "debt": debt,
-                   "orders_count": old_orders.count()
+                  "orders_count": old_orders.count()
                })
 
         return Response(overdue_customers)
+
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    user = request.user
+    old_password = request.data.get('old_password')
+    new_password = request.data.get('new_password')
+
+    if not user.check_password(old_password):
+        return Response({"error": "Λάθος τρέχων κωδικός"}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.set_password(new_password)
+    user.save()
+    return Response({"success": "Ο κωδικός άλλαξε επιτυχώς"})
