@@ -25,6 +25,7 @@ class Item(models.Model):
 class Order(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='orders')
     date = models.DateField(auto_now_add=True)
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def total_amount(self):
         return sum([item.total_price() for item in self.items.all()])

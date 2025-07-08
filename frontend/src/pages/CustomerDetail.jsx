@@ -32,7 +32,7 @@ export default function CustomerDetail() {
     }
   };
 
-  const totalOrders = orders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+  const totalOrders = orders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
   const totalPayments = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
   const balance = totalOrders - totalPayments;
 
@@ -81,7 +81,7 @@ export default function CustomerDetail() {
                 >
                   <td className="px-4 py-2">#{o.id}</td>
                   <td className="px-4 py-2">{o.date}</td>
-                  <td className="px-4 py-2 text-right">{(parseFloat(o.total) || 0).toFixed(2)}</td>
+                  <td className="px-4 py-2 text-right">{(parseFloat(o.total_amount) || 0).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -104,25 +104,31 @@ export default function CustomerDetail() {
 
             <p className="text-sm text-gray-600">Ημερομηνία: {selectedOrderDetails?.date}</p>
 
-            {selectedOrderDetails?.order_items?.length > 0 ? (
-              <table className="w-full text-sm border">
-                <thead>
-                  <tr className="bg-gray-100 text-left">
-                    <th className="p-2">Είδος</th>
-                    <th className="p-2">Ποσότητα</th>
-                    <th className="p-2">Τιμή (€)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedOrderDetails.order_items.map((item, index) => (
-                    <tr key={index} className="border-t">
-                      <td className="p-2">{item.item_name}</td>
-                      <td className="p-2">{item.quantity}</td>
-                      <td className="p-2">{(parseFloat(item.price) || 0).toFixed(2)}</td>
+            {selectedOrderDetails?.items?.length > 0 ? (
+              <>
+                <table className="w-full text-sm border">
+                  <thead>
+                    <tr className="bg-gray-100 text-left">
+                      <th className="p-2">Είδος</th>
+                      <th className="p-2">Ποσότητα</th>
+                      <th className="p-2">Σύνολο (€)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {selectedOrderDetails.items.map((item, index) => (
+                      <tr key={index} className="border-t">
+                        <td className="p-2">{item.item.name}</td>
+                        <td className="p-2">{item.quantity}</td>
+                        <td className="p-2">{(parseFloat(item.total_price) || 0).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="text-right mt-4 font-semibold">
+                  Σύνολο Παραγγελίας: {parseFloat(selectedOrderDetails.total_amount).toFixed(2)} €
+                </div>
+              </>
             ) : (
               <p className="text-gray-500">Δεν υπάρχουν είδη.</p>
             )}
