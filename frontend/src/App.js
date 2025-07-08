@@ -9,6 +9,12 @@ import Items from './pages/Items';
 import Login from './pages/Login';
 import Orders from './pages/Orders';
 import Payments from './pages/Payments';
+import ItemForm from './pages/ItemForm';
+import OrderCreate from './pages/OrderCreate';
+
+
+
+
 function App() {
   return (
     <Router>
@@ -30,6 +36,10 @@ function App() {
                   <Route path="/customers/:id/edit" element={<CustomerForm />} />
                   <Route path="/customers/:id" element={<CustomerDetail />} />
                   <Route path="/items" element={<Items />} />
+                  <Route path="/items/new" element={<ItemForm />} />
+                  <Route path="/items/:id/edit" element={<ItemForm />} />
+                  <Route path="/orders/new" element={<OrderCreate />} />
+                 
                 </Routes>
               </Layout>
             </ProtectedRoute>

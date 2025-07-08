@@ -38,28 +38,40 @@ class OrderItemCreateSerializer(serializers.ModelSerializer):
         model = OrderItem
         fields = ['id', 'order', 'item', 'quantity']
 
+class OrderItemInlineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ['item', 'quantity']
 
 class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True, read_only=True)
-    payments = PaymentSerializer(many=True, read_only=True)
+    customer = CustomerSerializer(read_only=True)
+    customer_name = serializers.SerializerMethodField()
     total_amount = serializers.SerializerMethodField()
     paid_amount = serializers.SerializerMethodField()
     remaining_amount = serializers.SerializerMethodField()
     is_paid = serializers.SerializerMethodField()
+    items = OrderItemSerializer(many=True, read_only=True)
+    payments = PaymentSerializer(many=True, read_only=True)
+   
 
     class Meta:
         model = Order
         fields = [
             'id',
             'customer',
+            'customer_name',
             'date',
             'items',
             'payments',
             'total_amount',
+            
             'paid_amount',
             'remaining_amount',
             'is_paid'
         ]
+
+    def get_customer_name(self, obj):
+        return f"{obj.customer.first_name} {obj.customer.last_name}"
 
     def get_total_amount(self, obj):
         return obj.total_amount()
@@ -72,3 +84,22 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def get_is_paid(self, obj):
         return obj.is_paid()
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        items_data = request.data.get('items', [])
+        customer_id = request.data.get('customer')  # <- παίρνουμε το id απευθείας
+        customer = Customer.objects.get(id=customer_id)
+
+        order = Order.objects.create(customer=customer)
+
+        for item_data in items_data:
+            OrderItem.objects.create(
+                 order=order,
+                 item_id=item_data['item'],
+                quantity=item_data['quantity']
+           )
+
+        return order
+
+   
