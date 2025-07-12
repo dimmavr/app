@@ -29,9 +29,15 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 
 class PaymentSerializer(serializers.ModelSerializer):
+    customer_name = serializers.SerializerMethodField()
+
+    def get_customer_name(self, obj):
+        return f"{obj.order.customer.first_name} {obj.order.customer.last_name}"
+
     class Meta:
         model = Payment
-        fields = '__all__'
+        fields = ['id', 'order', 'amount', 'date', 'customer_name']
+
 
 class OrderItemCreateSerializer(serializers.ModelSerializer):
     class Meta:

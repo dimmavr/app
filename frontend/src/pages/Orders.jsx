@@ -1,16 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
-import {
-  EyeIcon,
-  PencilSquareIcon,
-  TrashIcon,
-} from '@heroicons/react/24/outline';
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
-  const [searchName, setSearchName] = useState('');
-  const [searchDate, setSearchDate] = useState('');
+  const [search, setSearch] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState('');
 
   useEffect(() => {
     fetchOrders();
@@ -25,115 +20,93 @@ export default function Orders() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Επιβεβαιώνεις διαγραφή παραγγελίας;')) return;
-    try {
-      await api.delete(`/orders/${id}/`);
-      setOrders(orders.filter((o) => o.id !== id));
-    } catch (err) {
-      console.error('Σφάλμα διαγραφής:', err);
-    }
-  };
-
   const filtered = orders.filter((o) => {
-    const name =
-      o.customer_name ||
-      (o.customer?.first_name && o.customer?.last_name
-        ? `${o.customer.first_name} ${o.customer.last_name}`
-        : '');
-    const nameMatch = name.toLowerCase().includes(searchName.toLowerCase());
-    const dateMatch = o.date?.includes(searchDate);
-    return nameMatch && dateMatch;
+    const query = search.toLowerCase();
+    const name = o.customer_name?.toLowerCase() || '';
+    const date = o.date || '';
+    const statusMatch =
+      paymentStatus === ''
+        ? true
+        : paymentStatus === 'paid'
+        ? o.is_paid
+        : !o.is_paid;
+
+    return (
+      (name.includes(query) || date.includes(query)) && statusMatch
+    );
   });
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Παραγγελίες</h2>
-        <Link
-          to="/orders/new"
-          className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
-        >
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">📦 Παραγγελίες</h2>
+        <Link to="/orders/new" className="bg-green-600 text-white px-4 py-2 rounded">
           ➕ Νέα Παραγγελία
         </Link>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      <div className="flex flex-col md:flex-row gap-4">
         <input
           type="text"
-          placeholder="Αναζήτηση πελάτη..."
-          className="p-2 border rounded w-full md:w-1/3"
-          value={searchName}
-          onChange={(e) => setSearchName(e.target.value)}
+          placeholder="Αναζήτηση (όνομα ή ημερομηνία)"
+          className="p-2 border rounded w-full md:w-1/2"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
         />
-        <input
-          type="text"
-          placeholder="Φιλτράρισμα ημερομηνίας (π.χ. 2025-07)"
-          className="p-2 border rounded w-full md:w-1/3"
-          value={searchDate}
-          onChange={(e) => setSearchDate(e.target.value)}
-        />
+
+        <select
+          className="p-2 border rounded w-full md:w-1/4"
+          value={paymentStatus}
+          onChange={(e) => setPaymentStatus(e.target.value)}
+        >
+          <option value="">Όλες</option>
+          <option value="paid">Εξοφλημένες</option>
+          <option value="unpaid">Εκκρεμείς</option>
+        </select>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border rounded shadow text-sm">
+      <div className="overflow-x-auto bg-white shadow rounded">
+        <table className="min-w-full text-sm">
           <thead className="bg-gray-100 text-left">
             <tr>
               <th className="p-2">ID</th>
               <th className="p-2">Ημερομηνία</th>
               <th className="p-2">Πελάτης</th>
               <th className="p-2 text-right">Σύνολο (€)</th>
-              <th className="p-2 text-center">Ενέργειες</th>
+              <th className="p-2 text-center">Κατάσταση</th>
+              <th className="p-2 text-center">Προβολή</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length > 0 ? (
-              filtered.map((o) => {
-                const displayName =
-                  o.customer_name ||
-                  (o.customer?.first_name && o.customer?.last_name
-                    ? `${o.customer.first_name} ${o.customer.last_name}`
-                    : '-');
-
-                return (
-                  <tr key={o.id} className="border-t hover:bg-blue-50">
-                    <td className="p-2">#{o.id}</td>
-                    <td className="p-2">{o.date}</td>
-                    <td className="p-2">{displayName}</td>
-                    <td className="p-2 text-right">
-                      {(parseFloat(o.total_amount) || 0).toFixed(2)}
-                    </td>
-                    <td className="p-2 text-center">
-                      <div className="flex gap-2 justify-center">
-                        <Link
-                          to={`/orders/${o.id}`}
-                          title="Προβολή"
-                          className="p-1 bg-blue-500 hover:bg-blue-600 text-white rounded"
-                        >
-                          <EyeIcon className="w-5 h-5" />
-                        </Link>
-                        <Link
-                          to={`/orders/${o.id}/edit`}
-                          title="Επεξεργασία"
-                          className="p-1 bg-yellow-500 hover:bg-yellow-600 text-white rounded"
-                        >
-                          <PencilSquareIcon className="w-5 h-5" />
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(o.id)}
-                          title="Διαγραφή"
-                          className="p-1 bg-red-600 hover:bg-red-700 text-white rounded"
-                        >
-                          <TrashIcon className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
+              filtered.map((order) => (
+                <tr key={order.id} className="border-t hover:bg-blue-50">
+                  <td className="p-2">#{order.id}</td>
+                  <td className="p-2">{order.date}</td>
+                  <td className="p-2">{order.customer_name}</td>
+                  <td className="p-2 text-right">
+                    {parseFloat(order.total_amount).toFixed(2)}
+                  </td>
+                  <td className="p-2 text-center">
+                    {order.is_paid ? (
+                      <span className="text-green-600 font-semibold">Εξοφλημένη</span>
+                    ) : (
+                      <span className="text-red-600 font-semibold">Εκκρεμεί</span>
+                    )}
+                  </td>
+                  <td className="p-2 text-center">
+                    <Link
+                      to={`/orders/${order.id}`}
+                      className="text-blue-600 underline"
+                    >
+                      Προβολή
+                    </Link>
+                  </td>
+                </tr>
+              ))
             ) : (
               <tr>
-                <td colSpan="5" className="p-4 text-center text-gray-500">
+                <td colSpan="6" className="p-4 text-center text-gray-500">
                   Δεν βρέθηκαν παραγγελίες.
                 </td>
               </tr>

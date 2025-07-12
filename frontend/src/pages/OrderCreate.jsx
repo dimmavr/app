@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Select from 'react-select';
 import api from '../services/api';
 
 export default function OrderCreate() {
   const [customers, setCustomers] = useState([]);
   const [items, setItems] = useState([]);
-  const [selectedCustomer, setSelectedCustomer] = useState('');
-  const [orderItems, setOrderItems] = useState([
-    { item: '', quantity: 1, price: 0 },
-  ]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [orderItems, setOrderItems] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -17,142 +16,142 @@ export default function OrderCreate() {
   }, []);
 
   const fetchCustomers = async () => {
-    const res = await api.get('/customers/');
-    setCustomers(res.data);
+    try {
+      const res = await api.get('/customers/');
+      setCustomers(res.data);
+    } catch (err) {
+      console.error('Σφάλμα φόρτωσης πελατών:', err);
+    }
   };
 
   const fetchItems = async () => {
-    const res = await api.get('/items/');
-    setItems(res.data);
-  };
-
-  const handleItemChange = (index, field, value) => {
-    const updated = [...orderItems];
-    updated[index][field] = value;
-
-    if (field === 'item') {
-      const selected = items.find((i) => i.id === parseInt(value));
-      updated[index].price = selected ? selected.price : 0;
+    try {
+      const res = await api.get('/items/');
+      setItems(res.data);
+    } catch (err) {
+      console.error('Σφάλμα φόρτωσης ειδών:', err);
     }
-
-    setOrderItems(updated);
   };
 
-  const addItemRow = () => {
-    setOrderItems([...orderItems, { item: '', quantity: 1, price: 0 }]);
+  const addItem = () => {
+    setOrderItems([...orderItems, { item: null, quantity: 1 }]);
   };
 
-  const removeItemRow = (index) => {
+  const removeItem = (index) => {
     const updated = [...orderItems];
     updated.splice(index, 1);
     setOrderItems(updated);
   };
 
-  const total = orderItems.reduce(
-    (sum, i) => sum + i.quantity * i.price,
-    0
-  );
+  const updateItem = (index, field, value) => {
+    const updated = [...orderItems];
+    updated[index][field] = value;
+    setOrderItems(updated);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!selectedCustomer || !selectedCustomer.value) {
+      alert('Επιλέξτε πελάτη.');
+      return;
+    }
+
+    const validItems = orderItems.filter(i => i.item && i.quantity > 0);
+    if (validItems.length === 0) {
+      alert('Προσθέστε τουλάχιστον ένα είδος.');
+      return;
+    }
+
+    const payload = {
+      customer: selectedCustomer.value,
+      items: validItems.map(i => ({
+        item: i.item.value,
+        quantity: i.quantity,
+      })),
+    };
+
     try {
-      await api.post('/orders/', {
-        customer: selectedCustomer,
-        items: orderItems.map((i) => ({
-          item: i.item,
-          quantity: i.quantity,
-          total: total.toFixed(2),
-        })),
-      });
-      navigate('/orders');
+      const res = await api.post('/orders/', payload);
+      navigate(`/orders/${res.data.id}`);
     } catch (err) {
       console.error('Σφάλμα αποθήκευσης παραγγελίας:', err);
-      alert('Αποτυχία αποθήκευσης. Έλεγξε τα στοιχεία.');
+      alert('Σφάλμα κατά την αποθήκευση.');
     }
   };
 
+  const totalAmount = orderItems.reduce((sum, i) => {
+    const price = items.find(it => it.id === i.item?.value)?.price || 0;
+    return sum + price * (i.quantity || 0);
+  }, 0);
+
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">➕ Νέα Παραγγελία</h2>
+    <div className="max-w-3xl mx-auto p-6 bg-white rounded shadow space-y-6">
+      <h2 className="text-2xl font-bold">➕ Νέα Παραγγελία</h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block font-semibold mb-1">Πελάτης</label>
-          <select
+          <label className="block mb-1 font-semibold">Πελάτης</label>
+          <Select
+            options={customers.map((c) => ({
+              value: c.id,
+              label: `${c.first_name} ${c.last_name}`,
+            }))}
             value={selectedCustomer}
-            onChange={(e) => setSelectedCustomer(e.target.value)}
-            className="border p-2 rounded w-full"
-            required
-          >
-            <option value="">-- Επιλέξτε πελάτη --</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.first_name} {c.last_name}
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedCustomer}
+            placeholder="Επιλέξτε πελάτη..."
+            className="text-sm"
+          />
         </div>
 
-        <div>
-          <label className="block font-semibold mb-2">Είδη</label>
-          {orderItems.map((row, index) => (
-            <div key={index} className="flex gap-2 items-center mb-2">
-              <select
-                value={row.item}
-                onChange={(e) =>
-                  handleItemChange(index, 'item', e.target.value)
-                }
-                className="border p-2 rounded w-1/2"
-                required
-              >
-                <option value="">-- Επιλέξτε είδος --</option>
-                {items.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-
+        <div className="space-y-4">
+          <label className="block font-semibold">Είδη</label>
+          {orderItems.map((i, index) => (
+            <div key={index} className="flex gap-2 items-center">
+              <Select
+                className="w-full"
+                options={items.map((item) => ({
+                  value: item.id,
+                  label: `${item.name} (${parseFloat(item.price).toFixed(2)} €)`,
+                }))}
+                value={i.item}
+                onChange={(selected) => updateItem(index, 'item', selected)}
+                placeholder="Επιλογή είδους"
+              />
               <input
                 type="number"
                 min="1"
-                value={row.quantity}
+                className="w-24 p-1 border rounded"
+                value={i.quantity}
                 onChange={(e) =>
-                  handleItemChange(index, 'quantity', parseInt(e.target.value))
+                  updateItem(index, 'quantity', parseInt(e.target.value))
                 }
-                className="border p-2 rounded w-1/4"
-                required
               />
-
-              <span className="w-1/4 text-right text-gray-700">
-                {(row.price * row.quantity).toFixed(2)} €
-              </span>
-
-              {index > 0 && (
-                <button
-                  type="button"
-                  onClick={() => removeItemRow(index)}
-                  className="text-red-500 hover:text-red-700 font-bold text-xl"
-                >
-                  &minus;
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => removeItem(index)}
+                className="text-red-600 font-bold"
+              >
+                ✖
+              </button>
             </div>
           ))}
           <button
             type="button"
-            onClick={addItemRow}
-            className="text-blue-600 hover:underline text-sm mt-1"
+            onClick={addItem}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded"
           >
-            ➕ Προσθήκη είδους
+            ➕ Προσθήκη Είδους
           </button>
         </div>
 
-        <div className="text-xl font-bold">Σύνολο: {total.toFixed(2)} €</div>
+        <div className="text-right font-bold text-lg">
+          Σύνολο: {totalAmount.toFixed(2)} €
+        </div>
 
         <button
           type="submit"
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
         >
           Αποθήκευση Παραγγελίας
         </button>

@@ -5,12 +5,13 @@ import CustomerDetail from './pages/CustomerDetail';
 import CustomerForm from './pages/CustomerForm';
 import Customers from './pages/Customers';
 import Dashboard from './pages/Dashboard';
+import ItemForm from './pages/ItemForm';
 import Items from './pages/Items';
 import Login from './pages/Login';
+import OrderCreate from './pages/OrderCreate';
+import OrderDetail from './pages/OrderDetail';
 import Orders from './pages/Orders';
 import Payments from './pages/Payments';
-import ItemForm from './pages/ItemForm';
-import OrderCreate from './pages/OrderCreate';
 
 
 
@@ -39,7 +40,7 @@ function App() {
                   <Route path="/items/new" element={<ItemForm />} />
                   <Route path="/items/:id/edit" element={<ItemForm />} />
                   <Route path="/orders/new" element={<OrderCreate />} />
-                 
+                  <Route path="/orders/:id" element={<OrderDetail />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>

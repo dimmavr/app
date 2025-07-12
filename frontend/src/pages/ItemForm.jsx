@@ -1,30 +1,41 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
 
 export default function ItemForm() {
-  const navigate = useNavigate();
   const { id } = useParams();
+  const navigate = useNavigate();
   const isEdit = Boolean(id);
 
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     price: '',
+    category: '', // ✅ ΝΕΟ πεδίο
   });
 
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (isEdit) {
-      api.get(`/items/${id}/`)
-        .then((res) => setFormData(res.data))
-        .catch((err) => console.error('Σφάλμα φόρτωσης:', err));
+      fetchItem();
     }
   }, [id]);
 
+  const fetchItem = async () => {
+    try {
+      const res = await api.get(`/items/${id}/`);
+      setFormData(res.data);
+    } catch (err) {
+      console.error('Σφάλμα φόρτωσης είδους:', err);
+    }
+  };
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -40,18 +51,16 @@ export default function ItemForm() {
       if (err.response?.data) {
         setErrors(err.response.data);
       } else {
-        console.error('Σφάλμα αποθήκευσης:', err);
+        console.error('Σφάλμα αποθήκευσης είδους:', err);
       }
     }
   };
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">
-        {isEdit ? 'Επεξεργασία Είδους' : 'Προσθήκη Νέου Είδους'}
-      </h2>
+    <div className="max-w-xl mx-auto">
+      <h2 className="text-2xl font-bold mb-4">{isEdit ? '✏️ Επεξεργασία Είδους' : '➕ Νέο Είδος'}</h2>
 
-      <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block font-semibold">Όνομα</label>
           <input
@@ -60,20 +69,33 @@ export default function ItemForm() {
             value={formData.name}
             onChange={handleChange}
             className="w-full p-2 border rounded"
+            required
           />
           {errors.name && <p className="text-red-600">{errors.name}</p>}
         </div>
 
         <div>
           <label className="block font-semibold">Περιγραφή</label>
-          <input
-            type="text"
+          <textarea
             name="description"
             value={formData.description}
             onChange={handleChange}
             className="w-full p-2 border rounded"
+            rows="3"
           />
           {errors.description && <p className="text-red-600">{errors.description}</p>}
+        </div>
+
+        <div>
+          <label className="block font-semibold">Κατηγορία</label>
+          <input
+            type="text"
+            name="category"
+            value={formData.category}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+          />
+          {errors.category && <p className="text-red-600">{errors.category}</p>}
         </div>
 
         <div>
@@ -81,17 +103,18 @@ export default function ItemForm() {
           <input
             type="number"
             name="price"
-            step="0.01"
             value={formData.price}
             onChange={handleChange}
             className="w-full p-2 border rounded"
+            required
+            step="0.01"
           />
           {errors.price && <p className="text-red-600">{errors.price}</p>}
         </div>
 
         <button
           type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
         >
           Αποθήκευση
         </button>
