@@ -621,3 +621,59 @@ def debtors_all(self, request):
     data.sort(key=lambda x: x["debt"], reverse=True)
     return Response(data)
 
+
+
+
+
+
+@action(detail=False, methods=['get'])
+def sales_report(self, request):
+    date_str = request.query_params.get('date')
+    month_str = request.query_params.get('month')
+    customer_id = request.query_params.get('customer')
+
+    orders = Order.objects.all()
+
+    if date_str:
+        try:
+            date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            orders = orders.filter(date=date)
+        except ValueError:
+            return Response({"error": "Invalid date format. Use YYYY-MM-DD."}, status=400)
+
+    elif month_str:
+        try:
+            month = datetime.strptime(month_str, "%Y-%m").date()
+            orders = orders.filter(date__year=month.year, date__month=month.month)
+        except ValueError:
+            return Response({"error": "Invalid month format. Use YYYY-MM."}, status=400)
+
+    if customer_id:
+        orders = orders.filter(customer_id=customer_id)
+
+    total_sales = 0
+    total_orders = orders.count()
+    items_summary = {}
+
+    for order in orders:
+        total_sales += float(order.total_amount)
+        for order_item in order.items.all():
+            name = order_item.item.name
+            qty = order_item.quantity
+            total = order_item.total_price()
+
+            if name not in items_summary:
+                items_summary[name] = {"quantity": 0, "total": 0}
+            items_summary[name]["quantity"] += qty
+            items_summary[name]["total"] += float(total)
+
+    items_list = [
+        {"name": name, "quantity": data["quantity"], "total": round(data["total"], 2)}
+        for name, data in items_summary.items()
+    ]
+
+    return Response({
+        "total_sales": round(total_sales, 2),
+        "total_orders": total_orders,
+        "items": items_list
+    })

@@ -45,7 +45,6 @@ export default function Dashboard() {
         <h2 className="text-2xl font-bold">📊 Dashboard</h2>
         <div className="flex space-x-2">
           <Link to="/orders/new" className="bg-blue-600 text-white px-3 py-1 rounded">➕ Νέα Παραγγελία</Link>
-          <Link to="/payments" className="bg-green-600 text-white px-3 py-1 rounded">➕ Νέα Πληρωμή</Link>
           <Link to="/customers" className="bg-gray-700 text-white px-3 py-1 rounded">🔍 Αναζήτηση Πελάτη</Link>
         </div>
       </div>
