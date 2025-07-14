@@ -16,12 +16,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ViewSet
-from rest_framework.response import Response
-from rest_framework import status, viewsets, filters
-from django_filters.rest_framework import DjangoFilterBackend
-from .models import Order, OrderItem
-from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.authtoken.models import Token
+
 from .models import Customer, Item, Order, OrderItem, Payment
 from .serializers import (CustomerSerializer, ItemSerializer,
                           OrderItemCreateSerializer, OrderItemSerializer,
@@ -604,3 +599,25 @@ def register_user(request):
         "first_name": user.first_name,
         "last_name": user.last_name
     }, status=201)
+
+
+
+@action(detail=False, methods=['get'])
+def debtors_all(self, request):
+    customers = Customer.objects.all()
+    data = []
+
+    for c in customers:
+        total = sum(o.total_amount() for o in c.orders.all())
+        paid = sum(o.paid_amount() for o in c.orders.all())
+        debt = total - paid
+
+        if debt > 0:
+            data.append({
+                "customer": f"{c.first_name} {c.last_name}",
+                "debt": round(debt, 2)
+            })
+
+    data.sort(key=lambda x: x["debt"], reverse=True)
+    return Response(data)
+
