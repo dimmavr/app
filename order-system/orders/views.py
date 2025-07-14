@@ -16,12 +16,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ViewSet
-from rest_framework.response import Response
-from rest_framework import status, viewsets, filters
-from django_filters.rest_framework import DjangoFilterBackend
-from .models import Order, OrderItem
-from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.authtoken.models import Token
+
 from .models import Customer, Item, Order, OrderItem, Payment
 from .serializers import (CustomerSerializer, ItemSerializer,
                           OrderItemCreateSerializer, OrderItemSerializer,
@@ -604,3 +599,81 @@ def register_user(request):
         "first_name": user.first_name,
         "last_name": user.last_name
     }, status=201)
+
+
+
+@action(detail=False, methods=['get'])
+def debtors_all(self, request):
+    customers = Customer.objects.all()
+    data = []
+
+    for c in customers:
+        total = sum(o.total_amount() for o in c.orders.all())
+        paid = sum(o.paid_amount() for o in c.orders.all())
+        debt = total - paid
+
+        if debt > 0:
+            data.append({
+                "customer": f"{c.first_name} {c.last_name}",
+                "debt": round(debt, 2)
+            })
+
+    data.sort(key=lambda x: x["debt"], reverse=True)
+    return Response(data)
+
+
+
+
+
+
+@action(detail=False, methods=['get'])
+def sales_report(self, request):
+    date_str = request.query_params.get('date')
+    month_str = request.query_params.get('month')
+    customer_id = request.query_params.get('customer')
+
+    orders = Order.objects.all()
+
+    if date_str:
+        try:
+            date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            orders = orders.filter(date=date)
+        except ValueError:
+            return Response({"error": "Invalid date format. Use YYYY-MM-DD."}, status=400)
+
+    elif month_str:
+        try:
+            month = datetime.strptime(month_str, "%Y-%m").date()
+            orders = orders.filter(date__year=month.year, date__month=month.month)
+        except ValueError:
+            return Response({"error": "Invalid month format. Use YYYY-MM."}, status=400)
+
+    if customer_id:
+        orders = orders.filter(customer_id=customer_id)
+
+    total_sales = 0
+    total_orders = orders.count()
+    items_summary = {}
+
+    for order in orders:
+        total_sales += float(order.total_amount)
+        for order_item in order.items.all():
+            name = order_item.item.name
+            qty = order_item.quantity
+            total = order_item.total_price()
+
+            if name not in items_summary:
+                items_summary[name] = {"quantity": 0, "total": 0}
+            items_summary[name]["quantity"] += qty
+            items_summary[name]["total"] += float(total)
+
+    items_list = [
+        {"name": name, "quantity": data["quantity"], "total": round(data["total"], 2)}
+        for name, data in items_summary.items()
+    ]
+
+    return Response({
+        "total_sales": round(total_sales, 2),
+        "total_orders": total_orders,
+        "items": items_list
+    })
