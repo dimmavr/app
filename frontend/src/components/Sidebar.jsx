@@ -7,6 +7,7 @@ const links = [
   { to: '/items', label: 'Είδη' },
   { to: '/orders', label: 'Παραγγελίες' },
   { to: '/payments', label: 'Πληρωμές' },
+  { to: '/stats', label: ' Στατιστικά' },
 ];
 
 export default function Sidebar() {
