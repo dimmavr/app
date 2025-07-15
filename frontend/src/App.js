@@ -12,7 +12,7 @@ import OrderCreate from './pages/OrderCreate';
 import OrderDetail from './pages/OrderDetail';
 import Orders from './pages/Orders';
 import Payments from './pages/Payments';
-
+import StatsPanel from './pages/StatsPanel';
 
 
 
@@ -41,6 +41,7 @@ function App() {
                   <Route path="/items/:id/edit" element={<ItemForm />} />
                   <Route path="/orders/new" element={<OrderCreate />} />
                   <Route path="/orders/:id" element={<OrderDetail />} />
+                  <Route path="/stats" element={<ProtectedRoute><StatsPanel /></ProtectedRoute>} />
                 </Routes>
               </Layout>
             </ProtectedRoute>
