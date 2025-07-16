@@ -2,12 +2,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { logout } from '../auth';
 
 const links = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/customers', label: 'Πελάτες' },
-  { to: '/items', label: 'Είδη' },
-  { to: '/orders', label: 'Παραγγελίες' },
-  { to: '/payments', label: 'Πληρωμές' },
-  { to: '/stats', label: ' Στατιστικά' },
+  { to: '/dashboard', label: '📊 Dashboard' },
+  { to: '/customers', label: '👤 Πελάτες' },
+  { to: '/items', label: '📦 Είδη' },
+  { to: '/orders', label: '🛒 Παραγγελίες' },
+  { to: '/payments', label: '💳 Πληρωμές' },
+  { to: '/stats', label: '📈 Στατιστικά' },
 ];
 
 export default function Sidebar() {
@@ -22,7 +22,7 @@ export default function Sidebar() {
   return (
     <div className="w-64 bg-gray-800 text-white h-screen p-4 flex flex-col justify-between">
       <div>
-        <h1 className="text-xl font-bold mb-6">ERP Σύστημα</h1>
+        <h1 className="text-xl font-bold mb-6">Order System</h1>
         <nav className="flex flex-col gap-3">
           {links.map(({ to, label }) => (
             <Link
