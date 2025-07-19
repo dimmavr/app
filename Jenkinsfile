@@ -1,31 +1,28 @@
 pipeline {
     agent any
 
-    environment {
-        DOCKER_BUILDKIT = '1'
-    }
-
     stages {
-        stage('Install Docker CLI') {
+        stage('Build Backend') {
             steps {
-                sh '''
-                    apt-get update
-                    apt-get install -y docker.io docker-compose
-                '''
+                sh 'docker-compose build web'
             }
         }
 
-        stage('Checkout Code') {
+        stage('Build Frontend') {
             steps {
-                echo 'Code is fetched automatically from GitHub.'
+                sh 'docker-compose build frontend'
             }
         }
 
-        stage('Build and Run Containers') {
+        stage('Run Tests') {
             steps {
-                sh 'docker ps'
-                sh 'docker-compose down -v'
-                sh 'docker-compose up --build -d'
+                sh 'docker-compose run --rm web python manage.py test'
+            }
+        }
+
+        stage('Up Services') {
+            steps {
+                sh 'docker-compose up -d'
             }
         }
     }

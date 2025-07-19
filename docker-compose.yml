@@ -46,7 +46,8 @@ services:
     ports:
       - "3000:80"
     environment:
-      - REACT_APP_API_URL=http://localhost:8000/api
+        - REACT_APP_API_URL=http://web:8000/api
+
     depends_on:
       - web
 
