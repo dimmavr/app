@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-   jenkins:
+  jenkins:
     build:
       context: .
       dockerfile: Dockerfile.jenkins
@@ -13,9 +13,6 @@ services:
       - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
-
-
-
 
   db:
     image: postgres:15
@@ -49,8 +46,7 @@ services:
     ports:
       - "3000:80"
     environment:
-        - REACT_APP_API_URL=http://web:8000/api
-
+      - REACT_APP_API_URL=http://web:8000/api
     depends_on:
       - web
 
